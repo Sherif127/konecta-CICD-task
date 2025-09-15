@@ -1,0 +1,71 @@
+pipeline {
+  agent none
+
+  stages {
+
+    stage('Checkout') {
+      agent any
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Run Terraform') {
+      agent {
+        docker {
+          image 'hashicorp/terraform:latest'
+          args '--entrypoint="" -u root:root'
+        }
+      }
+      steps {
+        dir("./terraform") {
+          withCredentials([
+            string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+            string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
+            string(credentialsId: 'AWS_SESSION_TOKEN', variable: 'AWS_SESSION_TOKEN')
+          ]) {
+            sh '''
+              export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+              export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+              export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
+
+              terraform init
+              terraform apply --auto-approve
+            '''
+            script {
+              EC2_IP = sh(script: "terraform output -raw EC2_IP", returnStdout: true).trim()
+              echo "EC2_IP is ${EC2_IP}"
+            }
+          }
+        }
+      }
+    }
+
+    stage('Run Ansible') {
+      agent {
+        docker {
+          image 'alpine/ansible:latest'
+          args '-u root:root'
+        }
+      }
+      steps {
+        dir("./ansible") {
+          withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key',keyFileVariable: 'SSH_KEY')]) {
+            sh '''
+              ansible-playbook playbook.yml --private-key $SSH_KEY
+            '''
+          }
+        }
+      }
+    }
+
+  }
+
+  post {
+    success {
+      build job: 'deploy-pipeline-job', parameters: [
+        string(name: 'EC2_IP', value: EC2_IP)
+      ]
+    }
+  }
+}
