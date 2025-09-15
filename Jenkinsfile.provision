@@ -54,7 +54,7 @@ pipeline {
         dir("./ansible") {
           withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key',keyFileVariable: 'SSH_KEY')]) {
             sh '''
-              ansible-playbook playbook.yml --private-key $SSH_KEY
+              ansible-playbook playbook.yaml --private-key $SSH_KEY
             '''
           }
         }
