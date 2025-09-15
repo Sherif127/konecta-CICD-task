@@ -50,7 +50,7 @@ pipeline {
         withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key',
                                            keyFileVariable: 'SSH_KEY')]) {
           sh '''
-            ansible-playbook ansible/playbook.yml \
+            ansible-playbook ansible/playbook.yaml \
               -i ansible/inventory.ini \
               -u ec2-user \
               --private-key $SSH_KEY \
