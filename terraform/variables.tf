@@ -8,10 +8,6 @@ variable "instance_type" {
   default = "t3.micro"
 }
 
-variable "key_name" {
-  type    = string
-  default = ""
-}
 
 variable "name" {
   type    = string
