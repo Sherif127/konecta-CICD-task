@@ -13,5 +13,5 @@ resource "local_file" "ansible_inventory_file_creation" {
     backend-ec2 ansible_host=${aws_instance.web.public_ip}
   EOT
 
-  filename = "${path.module}/../Ansible/inventory.ini"
+  filename = "${path.module}/../ansible/inventory.ini"
 }
