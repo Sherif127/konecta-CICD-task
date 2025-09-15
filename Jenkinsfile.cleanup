@@ -15,9 +15,9 @@ pipeline {
             export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
             export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
             export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
+            export AWS_DEFAULT_REGION=${AWS_REGION}
 
             instanceIds=$(aws ec2 describe-instances \
-              --region ${AWS_REGION} \
               --filters "Name=tag:lifespan,Values=ephemeral" \
                         "Name=tag:owner,Values=jenkins" \
                         "Name=instance-state-name,Values=pending,running,stopping,stopped" \
@@ -26,7 +26,7 @@ pipeline {
 
             if [ -n "$instanceIds" ]; then
               echo "Found ephemeral instances: $instanceIds"
-              aws ec2 terminate-instances --instance-ids $instanceIds
+              aws ec2 terminate-instances --instance-ids $instanceIds --region $AWS_REGION
               echo "Termination initiated."
             else
               echo "No ephemeral instances found."
