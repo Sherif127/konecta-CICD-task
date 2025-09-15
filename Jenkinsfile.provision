@@ -32,43 +32,39 @@ pipeline {
               terraform init
               terraform apply --auto-approve
             '''
-        script {
-             EC2_IP = sh(script: "terraform output -raw EC2_Public_IP", returnStdout: true).trim()
-             echo "EC2 Public IP is ${EC2_IP}"
+            script {
+              EC2_IP = sh(script: "terraform output -raw EC2_Public_IP", returnStdout: true).trim()
+              echo "EC2 Public IP is ${EC2_IP}"
             }
-
-
           }
         }
       }
     }
 
     stage('Ansible Configure') {
-    environment {
+      environment {
         ANSIBLE_HOST_KEY_CHECKING = 'False'
-    }
-    steps {
-        withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key', 
+      }
+      steps {
+        withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key',
                                            keyFileVariable: 'SSH_KEY')]) {
-            sh '''
-              ansible-playbook ansible/playbook.yml \
-                -i ansible/inventory.ini \
-                -u ec2-user \
-                --private-key $SSH_KEY \
-                --ssh-extra-args="-o StrictHostKeyChecking=no"
-            '''
-                  }
-            }
+          sh '''
+            ansible-playbook ansible/playbook.yml \
+              -i ansible/inventory.ini \
+              -u ec2-user \
+              --private-key $SSH_KEY \
+              --ssh-extra-args="-o StrictHostKeyChecking=no"
+          '''
         }
+      }
     }
-
   }
 
-        post {
-         success {
-              build job: 'deploy-pipeline-job', parameters: [
-                   string(name: 'EC2_Public_IP', value: EC2_IP),
-        ]
-     }
+  post {
+    success {
+      build job: 'deploy-pipeline-job', parameters: [
+        string(name: 'EC2_Public_IP', value: EC2_IP)
+      ]
     }
+  }
 }
