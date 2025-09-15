@@ -2,7 +2,7 @@ def IMAGE_NAME = "leoughhh/nginx"
 def IMAGE_TAG = ""
 
 pipeline {
-  agent none
+  agent any 
 
   parameters {
     string(name: 'EC2_IP', defaultValue: '', description: 'Ephemeral EC2 IP')
@@ -11,12 +11,6 @@ pipeline {
   stages {
 
     stage('Build Docker Image') {
-      agent {
-        docker {
-          image 'docker:latest'
-          args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-      }
       steps {
         dir("./App") {
           sh 'git config --global --add safe.directory $(pwd)/..'
@@ -33,12 +27,6 @@ pipeline {
     }
 
     stage('Push to Docker Hub') {
-      agent {
-        docker {
-          image 'docker:latest'
-          args '-u root:root -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-      }
       steps {
         withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
           sh """
@@ -50,7 +38,6 @@ pipeline {
     }
 
     stage('Deploy to EC2') {
-      agent any
       steps {
         withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key', keyFileVariable: 'SSH_KEY')]) {
           sh """
