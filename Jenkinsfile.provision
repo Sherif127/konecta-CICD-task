@@ -2,10 +2,16 @@ pipeline {
     agent any
 
     environment {
-        EC2_IP = ''
+        ANSIBLE_HOST_KEY_CHECKING = 'False'
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Run Terraform') {
             steps {
                 dir("./terraform") {
@@ -23,8 +29,9 @@ pipeline {
                           terraform apply --auto-approve
                         '''
                         script {
-                            env.EC2_IP = sh(script: "terraform output -raw EC2_Public_IP", returnStdout: true).trim()
-                            echo "EC2 Public IP is ${env.EC2_IP}"
+                            // نحفظ الـ IP مباشرة في متغير Groovy
+                            EC2_IP = sh(script: "terraform output -raw EC2_Public_IP", returnStdout: true).trim()
+                            echo "EC2 Public IP is ${EC2_IP}"
                         }
                     }
                 }
@@ -32,19 +39,15 @@ pipeline {
         }
 
         stage('Ansible Configure') {
-            environment {
-                ANSIBLE_HOST_KEY_CHECKING = 'False'
-            }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key',
-                                                   keyFileVariable: 'SSH_KEY')]) {
-                    sh '''
+                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key', keyFileVariable: 'SSH_KEY')]) {
+                    sh """
                       ansible-playbook ansible/playbook.yaml \
                         -i ansible/inventory.ini \
                         -u ec2-user \
-                        --private-key $SSH_KEY \
+                        --private-key \$SSH_KEY \
                         --ssh-extra-args="-o StrictHostKeyChecking=no"
-                    '''
+                    """
                 }
             }
         }
@@ -52,9 +55,9 @@ pipeline {
 
     post {
         success {
-            echo "Terraform completed successfully, triggering deploy job"
+            echo "Terraform completed successfully, triggering deploy job with IP ${EC2_IP}"
             build job: 'Pipeline-deploy',
-                  parameters: [string(name: 'EC2_IP', value: env.EC2_IP)]
+                  parameters: [string(name: 'EC2_IP', value: EC2_IP)]
         }
     }
 }

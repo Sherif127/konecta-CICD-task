@@ -10,6 +10,12 @@ pipeline {
 
   stages {
 
+    stage('Checkout') {
+        steps {
+            checkout scm
+        }
+    }
+
     stage('Build Docker Image') {
       steps {
         dir("./App") {
@@ -41,11 +47,11 @@ pipeline {
       steps {
         withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key', keyFileVariable: 'SSH_KEY')]) {
           sh """
-            ssh -o StrictHostKeyChecking=no -i $SSH_KEY ec2-user@${params.EC2_IP} \
+            ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ec2-user@${params.EC2_IP} \
               "docker rm -f web || true && \
                docker run -d --name web -p 80:80 ${IMAGE_NAME}:${IMAGE_TAG}"
             
-            ssh -o StrictHostKeyChecking=no -i $SSH_KEY ec2-user@${params.EC2_IP} \
+            ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ec2-user@${params.EC2_IP} \
               "curl -s http://localhost:80"
           """
         }
