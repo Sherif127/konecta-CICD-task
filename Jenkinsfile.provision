@@ -43,14 +43,6 @@ pipeline {
       }
     }
 
-    stage('Run Ansible') {
-      agent {
-        docker {
-          image 'alpine/ansible:latest'
-          args '-u root:root'
-        }
-      }
-
     stage('Ansible Configure') {
     environment {
         ANSIBLE_HOST_KEY_CHECKING = 'False'
