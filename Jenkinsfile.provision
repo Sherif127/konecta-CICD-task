@@ -42,6 +42,7 @@ pipeline {
     }
 
     stage('Ansible Configure') {
+      agent any  
       environment {
         ANSIBLE_HOST_KEY_CHECKING = 'False'
       }
@@ -57,14 +58,6 @@ pipeline {
           '''
         }
       }
-    }
-  }
-
-  post {
-    success {
-      build job: 'deploy-pipeline-job', parameters: [
-        string(name: 'EC2_Public_IP', value: EC2_IP)
-      ]
     }
   }
 }
