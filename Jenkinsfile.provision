@@ -1,54 +1,60 @@
 pipeline {
-  agent any
+    agent any
 
-  stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+    environment {
+        EC2_IP = ''
     }
 
-    stage('Run Terraform') {
-      steps {
-        dir("./terraform") {
-          withCredentials([
-            string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-            string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
-            string(credentialsId: 'AWS_SESSION_TOKEN', variable: 'AWS_SESSION_TOKEN')
-          ]) {
-            sh '''
-              export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-              export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-              export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
+    stages {
+        stage('Run Terraform') {
+            steps {
+                dir("./terraform") {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY'),
+                        string(credentialsId: 'AWS_SESSION_TOKEN', variable: 'AWS_SESSION_TOKEN')
+                    ]) {
+                        sh '''
+                          export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                          export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                          export AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
 
-              terraform init
-              terraform apply --auto-approve
-            '''
-            script {
-              EC2_IP = sh(script: "terraform output -raw EC2_Public_IP", returnStdout: true).trim()
-              echo "EC2 Public IP is ${EC2_IP}"
+                          terraform init
+                          terraform apply --auto-approve
+                        '''
+                        script {
+                            env.EC2_IP = sh(script: "terraform output -raw EC2_Public_IP", returnStdout: true).trim()
+                            echo "EC2 Public IP is ${env.EC2_IP}"
+                        }
+                    }
+                }
             }
-          }
         }
-      }
+
+        stage('Ansible Configure') {
+            environment {
+                ANSIBLE_HOST_KEY_CHECKING = 'False'
+            }
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key',
+                                                   keyFileVariable: 'SSH_KEY')]) {
+                    sh '''
+                      ansible-playbook ansible/playbook.yaml \
+                        -i ansible/inventory.ini \
+                        -u ec2-user \
+                        --private-key $SSH_KEY \
+                        --ssh-extra-args="-o StrictHostKeyChecking=no"
+                    '''
+                }
+            }
+        }
     }
 
-    stage('Ansible Configure') {
-      environment {
-        ANSIBLE_HOST_KEY_CHECKING = 'False'
-      }
-      steps {
-        withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key',
-                                           keyFileVariable: 'SSH_KEY')]) {
-          sh '''
-            ansible-playbook ansible/playbook.yaml \
-              -i ansible/inventory.ini \
-              -u ec2-user \
-              --private-key $SSH_KEY \
-              --ssh-extra-args="-o StrictHostKeyChecking=no"
-          '''
+    post {
+        success {
+            echo "Terraform completed successfully, triggering deploy job"
+            build job: 'Pipeline-deploy',
+                  parameters: [string(name: 'EC2_IP', value: env.EC2_IP)]
         }
-      }
     }
-  }
 }
