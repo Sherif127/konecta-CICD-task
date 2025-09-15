@@ -1,22 +1,14 @@
 pipeline {
-  agent none
+  agent any
 
   stages {
-
     stage('Checkout') {
-      agent any
       steps {
         checkout scm
       }
     }
 
     stage('Run Terraform') {
-      agent {
-        docker {
-          image 'hashicorp/terraform:latest'
-          args '--entrypoint="" -u root:root'
-        }
-      }
       steps {
         dir("./terraform") {
           withCredentials([
@@ -42,7 +34,6 @@ pipeline {
     }
 
     stage('Ansible Configure') {
-      agent any  
       environment {
         ANSIBLE_HOST_KEY_CHECKING = 'False'
       }
