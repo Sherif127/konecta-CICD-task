@@ -29,7 +29,7 @@ pipeline {
                           terraform apply --auto-approve
                         '''
                         script {
-                            // نحفظ الـ IP مباشرة في متغير Groovy
+                            // نحفظ الـ IP في متغير Groovy
                             EC2_IP = sh(script: "terraform output -raw EC2_Public_IP", returnStdout: true).trim()
                             echo "EC2 Public IP is ${EC2_IP}"
                         }
@@ -55,9 +55,15 @@ pipeline {
 
     post {
         success {
-            echo "Terraform completed successfully, triggering deploy job with IP ${EC2_IP}"
-            build job: 'Pipeline-deploy',
-                  parameters: [string(name: 'EC2_IP', value: EC2_IP)]
+            script {
+                if (EC2_IP?.trim()) {
+                    echo "Terraform completed successfully, triggering deploy job with IP ${EC2_IP}"
+                    build job: 'Pipeline-deploy',
+                          parameters: [string(name: 'EC2_IP', value: EC2_IP)]
+                } else {
+                    error "EC2_IP is empty, cannot trigger deploy."
+                }
+            }
         }
     }
 }

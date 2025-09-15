@@ -45,6 +45,9 @@ pipeline {
 
     stage('Deploy to EC2') {
       steps {
+        script {
+            echo "Deploying to EC2 IP: ${params.EC2_IP}"
+        }
         withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh-key', keyFileVariable: 'SSH_KEY')]) {
           sh """
             ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ec2-user@${params.EC2_IP} \
