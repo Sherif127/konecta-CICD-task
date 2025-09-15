@@ -67,7 +67,6 @@ pipeline {
          success {
               build job: 'deploy-pipeline-job', parameters: [
                    string(name: 'EC2_Public_IP', value: EC2_IP),
-                   string(name: 'EC2_Private_IP', value: EC2_Private_IP)
     ]
   }
 }
