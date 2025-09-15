@@ -7,7 +7,6 @@ resource "local_file" "ansible_inventory_file_creation" {
   content = <<-EOT
     [all:vars]
     ansible_user=ec2-user
-    ansible_ssh_private_key_file=~/.ssh/mykeypair.pem
 
     [backend]
     backend-ec2 ansible_host=${aws_instance.web.public_ip}
