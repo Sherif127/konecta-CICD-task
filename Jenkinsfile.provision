@@ -32,10 +32,12 @@ pipeline {
               terraform init
               terraform apply --auto-approve
             '''
-            script {
-              EC2_IP = sh(script: "terraform output -raw EC2_IP", returnStdout: true).trim()
-              echo "EC2_IP is ${EC2_IP}"
+        script {
+             EC2_IP = sh(script: "terraform output -raw EC2_Public_IP", returnStdout: true).trim()
+             echo "EC2 Public IP is ${EC2_IP}"
             }
+
+
           }
         }
       }
@@ -61,11 +63,13 @@ pipeline {
 
   }
 
-  post {
-    success {
-      build job: 'deploy-pipeline-job', parameters: [
-        string(name: 'EC2_IP', value: EC2_IP)
-      ]
-    }
+        post {
+         success {
+              build job: 'deploy-pipeline-job', parameters: [
+                   string(name: 'EC2_Public_IP', value: EC2_IP),
+                   string(name: 'EC2_Private_IP', value: EC2_Private_IP)
+    ]
   }
+}
+
 }
